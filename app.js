@@ -524,9 +524,19 @@ const TYPE={
   sale:['بيع','low'],adjust_material:['تسوية خامة','ok'],adjust_product:['تسوية منتج','ok']
 };
 async function movements(){
-  const{data}=await sb.from('agro_movements')
-    .select('id,type,quantity,unit_price,note,created_at,material_id,product_id,agro_materials(name),agro_products(name)')
-    .order('created_at',{ascending:false}).limit(100);
+  let query = sb.from('agro_movements')
+    .select('id,type,quantity,unit_price,note,created_at,material_id,product_id,agro_materials(name),agro_products(name)');
+  
+  if (role === 'store') {
+    // المحل يرى فقط حركات المنتجات (الإنتاج، البيع، وتسوية المنتجات)
+    query = query.in('type', ['production', 'sale', 'adjust_product']);
+  } else {
+    // المصنع يرى حركات الخامات (شراء، صرف، تسوية خامات) وحركات الإنتاج
+    query = query.in('type', ['purchase', 'issue', 'adjust_material', 'production']);
+  }
+
+  const {data}=await query.order('created_at',{ascending:false}).limit(100);
+
   $('#view').innerHTML=`
     <div class="page-head"><h1>كل الحركات</h1><p>آخر 100 حركة على المخزون.</p></div>
     <div class="panel"><div class="panel-body" style="padding:0">
