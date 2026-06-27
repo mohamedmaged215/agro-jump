@@ -16,11 +16,12 @@
           <path d="M12 13c0-3-2-5-6-5 0 4 3 6 6 6z"/>
         </svg>
       </div>
-      <div class="brand-name">Agro <span style="color:var(--green)">Jump</span></div>
+      <div class="brand-name">Agro <span style="color:var(--green-light)">Jump</span></div>
     </div>
     <div class="user-chip">
       <span class="role-badge" id="roleBadge">—</span>
-      <button class="logout-btn" id="logout">خروج</button>
+      <button class="logout-btn" id="changePasswordBtn">كلمة المرور</button>
+      <button class="logout-btn" id="logout" style="color:var(--danger)">خروج</button>
     </div>
   </header>
   <div class="body">
@@ -28,6 +29,42 @@
     <main class="main" id="view"></main>
   </div>
 </div>
+
+<!-- مودال التركيبة التفاعلي -->
+<div class="modal" id="recipeModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">تركيبة المنتج</h3>
+      <button class="close-btn" id="closeModal">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- محتوى التركيبة يتم تحميله ديناميكيًا -->
+    </div>
+  </div>
+</div>
+
+<!-- مودال تغيير كلمة المرور -->
+<div class="modal" id="passwordModal">
+  <div class="modal-content" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3>تغيير كلمة المرور</h3>
+      <button class="close-btn" id="closePasswordModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-err" id="passwordErr"></div>
+      <div class="field">
+        <label>كلمة المرور الحالية</label>
+        <input id="oldPassword" type="password" placeholder="••••••••">
+      </div>
+      <div class="field">
+        <label>كلمة المرور الجديدة</label>
+        <input id="newPassword" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-green" id="savePasswordBtn" style="width: 100%; margin-top: 12px;">حفظ كلمة المرور</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module" src="app.js"></script>

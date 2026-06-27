@@ -221,6 +221,86 @@ async function materials(){
 }
 
 /* ========== المنتجات والتركيبة ========== */
+let currentRecipeProductId = null;
+let currentRecipeMatsList = [];
+
+function openRecipeModal(pid, productName, mats) {
+  currentRecipeProductId = pid;
+  currentRecipeMatsList = mats;
+  $('#modalTitle').textContent = `تركيبة المنتج: ${productName}`;
+  $('#recipeModal').classList.add('show');
+  renderModalRecipe(pid, mats);
+}
+
+async function renderModalRecipe(pid, mats){
+  const container = $('#modalBody');
+  container.innerHTML = '<div class="empty">جاري تحميل التركيبة…</div>';
+  const{data:lines}=await sb.from('agro_recipe')
+    .select('id,quantity_kg,material_id,agro_materials(name,price_per_kg)')
+    .eq('product_id',pid).order('id');
+
+  const rows=(lines||[]).map(l=>{
+    const lineCost=+l.quantity_kg*+l.agro_materials.price_per_kg;
+    return `<div class="recipe-line" data-lid="${l.id}">
+      <span class="nm">${esc(l.agro_materials.name)}</span>
+      <span class="num muted" style="min-width:140px">
+        <input class="inline-input rqty" type="number" step="0.0001" value="${l.quantity_kg}" style="width:80px"> كجم
+        × ${money(l.agro_materials.price_per_kg)}
+      </span>
+      <span class="cost-cell">${money(lineCost)}</span>
+      <button class="btn-sm btn-green save-rqty">حفظ</button>
+      <button class="btn-sm btn-danger del-line">${ic('del')}</button>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="font-weight:700;margin-bottom:12px;color:var(--green-medium);font-size:1.05rem;">الخامات المكونة:</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+      ${rows||'<div class="muted" style="margin-bottom:10px">لا توجد خامات في هذا المنتج بعد.</div>'}
+    </div>
+    <div style="border-top:1px solid var(--line);padding-top:18px;">
+      <div style="font-weight:700;margin-bottom:12px;color:var(--green-medium)">إضافة خامة جديدة للتركيبة:</div>
+      <div class="form-grid">
+        <div class="field"><label>الخامة</label><select class="r_mat">${(mats||[]).map(m=>`<option value="${m.id}">${esc(m.name)} (${money(m.price_per_kg)}/كجم)</option>`).join('')}</select></div>
+        <div class="field"><label>الكمية في العبوة (كجم)</label><input class="r_qty" type="number" step="0.0001" placeholder="0.25"></div>
+        <button class="btn btn-green r_add">إضافة خامة</button>
+      </div>
+    </div>`;
+
+  /* إضافة خامة للتركيبة */
+  container.querySelector('.r_add').addEventListener('click',async()=>{
+    const material_id=container.querySelector('.r_mat').value;
+    const quantity_kg=parseFloat(container.querySelector('.r_qty').value);
+    if(!material_id||isNaN(quantity_kg)||quantity_kg<=0){toast('اختر الخامة واكتب كمية صحيحة.',true);return;}
+    const{error}=await sb.from('agro_recipe').insert({product_id:pid,material_id,quantity_kg});
+    if(error){toast(error.code==='23505'?'الخامة موجودة بالفعل في التركيبة.':'تعذّر الإضافة.',true);return;}
+    toast('تمت إضافة الخامة للتركيبة.');
+    renderModalRecipe(pid,mats); products();
+  });
+
+  /* تعديل كمية في التركيبة */
+  container.querySelectorAll('.save-rqty').forEach(b=>b.addEventListener('click',async()=>{
+    const line=b.closest('.recipe-line');
+    const lid=line.dataset.lid;
+    const qty=parseFloat(line.querySelector('.rqty').value);
+    if(isNaN(qty)||qty<=0){toast('كمية غير صحيحة.',true);return;}
+    const{error}=await sb.from('agro_recipe').update({quantity_kg:qty}).eq('id',lid);
+    if(error){toast('تعذّر التحديث.',true);return;}
+    toast('تم تحديث الكمية.'); renderModalRecipe(pid,mats); products();
+  }));
+
+  /* حذف سطر من التركيبة */
+  container.querySelectorAll('.del-line').forEach(b=>b.addEventListener('click',async()=>{
+    const line=b.closest('.recipe-line');
+    const lid=line.dataset.lid;
+    const name=line.querySelector('.nm').textContent.trim();
+    if(!confirm_del(`حذف "${name}" من التركيبة؟`))return;
+    const{error}=await sb.from('agro_recipe').delete().eq('id',lid);
+    if(error){toast('تعذّر الحذف.',true);return;}
+    toast('تم حذف الخامة من التركيبة.'); renderModalRecipe(pid,mats); products();
+  }));
+}
+
 async function products(){
   const [{data:prods},{data:mats}]=await Promise.all([getProdCost(),getMaterials()]);
   $('#view').innerHTML=`
@@ -256,8 +336,7 @@ async function products(){
               <button class="btn-sm btn-green recipe-btn">التركيبة</button>
               <button class="btn-sm btn-danger del-prod" title="حذف المنتج">${ic('del')}</button>
             </td>
-          </tr>
-          <tr class="recipe-row" data-rid="${p.id}" style="${openRecipes.has(p.id.toString()) ? '' : 'display:none'}"><td colspan="5" style="background:#FAFBFA"></td></tr>`).join('')}
+          </tr>`).join('')}
         </tbody></table>`:`<div class="empty">لا توجد منتجات بعد.</div>`}
       </div>
     </div>`;
@@ -272,6 +351,7 @@ async function products(){
 
   $$('#view tr[data-id]').forEach(tr=>{
     const id=tr.dataset.id;
+    const p=prods.find(x=>x.id.toString()===id);
 
     /* تعديل الاسم */
     tr.querySelector('.edit-name').addEventListener('click',()=>{
@@ -302,16 +382,7 @@ async function products(){
 
     /* التركيبة */
     tr.querySelector('.recipe-btn').addEventListener('click',()=>{
-      const row=$(`#view tr.recipe-row[data-rid="${id}"]`);
-      if(row.style.display==='none'){
-        row.style.display='';
-        openRecipes.add(id.toString());
-        renderRecipe(id,row.firstElementChild,mats);
-      }
-      else {
-        row.style.display='none';
-        openRecipes.delete(id.toString());
-      }
+      openRecipeModal(id, p ? p.name : 'المنتج', mats);
     });
 
     /* حذف المنتج */
@@ -320,80 +391,9 @@ async function products(){
       if(!confirm_del(`حذف المنتج "${name}" وتركيبته كاملة؟`))return;
       const{error}=await sb.from('agro_products').delete().eq('id',id);
       if(error){toast('تعذّر الحذف.',true);return;}
-      openRecipes.delete(id.toString());
       toast('تم حذف المنتج.'); products();
     });
-
-    /* إعادة فتح لوحة التركيبة إذا كانت مفتوحة مسبقاً */
-    if(openRecipes.has(id.toString())){
-      const row=$(`#view tr.recipe-row[data-rid="${id}"]`);
-      renderRecipe(id,row.firstElementChild,mats);
-    }
   });
-}
-
-async function renderRecipe(pid, cell, mats){
-  cell.innerHTML='<div class="empty">جاري تحميل التركيبة…</div>';
-  const{data:lines}=await sb.from('agro_recipe')
-    .select('id,quantity_kg,material_id,agro_materials(name,price_per_kg)')
-    .eq('product_id',pid).order('id');
-
-  const rows=(lines||[]).map(l=>{
-    const lineCost=+l.quantity_kg*+l.agro_materials.price_per_kg;
-    return `<div class="recipe-line" data-lid="${l.id}">
-      <span class="nm">${esc(l.agro_materials.name)}</span>
-      <span class="num muted" style="min-width:140px">
-        <input class="inline-input rqty" type="number" step="0.0001" value="${l.quantity_kg}" style="width:80px"> كجم
-        × ${money(l.agro_materials.price_per_kg)}
-      </span>
-      <span class="cost-cell">${money(lineCost)}</span>
-      <button class="btn-sm btn-green save-rqty">حفظ</button>
-      <button class="btn-sm btn-danger del-line">${ic('del')}</button>
-    </div>`;
-  }).join('');
-
-  cell.innerHTML=`<div class="recipe-panel">
-    <div style="font-weight:700;margin-bottom:10px">تركيبة المنتج</div>
-    ${rows||'<div class="muted" style="margin-bottom:10px">لا توجد خامات في هذا المنتج بعد.</div>'}
-    <div class="form-grid" style="margin-top:14px">
-      <div class="field"><label>الخامة</label><select class="r_mat">${(mats||[]).map(m=>`<option value="${m.id}">${esc(m.name)} (${money(m.price_per_kg)}/كجم)</option>`).join('')}</select></div>
-      <div class="field"><label>الكمية في العبوة (كجم)</label><input class="r_qty" type="number" step="0.0001" placeholder="0.25"></div>
-      <button class="btn btn-green r_add">إضافة خامة</button>
-    </div>
-  </div>`;
-
-  /* إضافة خامة للتركيبة */
-  cell.querySelector('.r_add').addEventListener('click',async()=>{
-    const material_id=cell.querySelector('.r_mat').value;
-    const quantity_kg=parseFloat(cell.querySelector('.r_qty').value);
-    if(!material_id||isNaN(quantity_kg)||quantity_kg<=0){toast('اختر الخامة واكتب كمية صحيحة.',true);return;}
-    const{error}=await sb.from('agro_recipe').insert({product_id:pid,material_id,quantity_kg});
-    if(error){toast(error.code==='23505'?'الخامة موجودة بالفعل في التركيبة.':'تعذّر الإضافة.',true);return;}
-    toast('تمت إضافة الخامة للتركيبة.');
-    renderRecipe(pid,cell,mats); products();
-  });
-
-  /* تعديل كمية في التركيبة */
-  cell.querySelectorAll('.save-rqty').forEach(b=>b.addEventListener('click',async()=>{
-    const line=b.closest('.recipe-line');
-    const lid=line.dataset.lid;
-    const qty=parseFloat(line.querySelector('.rqty').value);
-    if(isNaN(qty)||qty<=0){toast('كمية غير صحيحة.',true);return;}
-    const{error}=await sb.from('agro_recipe').update({quantity_kg:qty}).eq('id',lid);
-    if(error){toast('تعذّر التحديث.',true);return;}
-    toast('تم تحديث الكمية.'); renderRecipe(pid,cell,mats); products();
-  }));
-
-  /* حذف سطر من التركيبة */
-  cell.querySelectorAll('.del-line').forEach(b=>b.addEventListener('click',async()=>{
-    const line=b.closest('.recipe-line');
-    const lid=line.dataset.lid;
-    const name=line.querySelector('.nm').textContent.trim();
-    if(!confirm_del(`حذف "${name}" من التركيبة؟`))return;
-    const{error}=await sb.from('agro_recipe').delete().eq('id',lid);
-    if(error){toast('تعذّر الحذف.',true);return;}
-    toast('تم حذف الخامة من التركيبة.'); renderRecipe(pid,cell,mats); products();
-  }));
 }
 
 /* ========== شراء خامات ========== */
@@ -533,6 +533,81 @@ async function movements(){
       </tbody></table>`:`<div class="empty">لا توجد حركات بعد.</div>`}
     </div></div>`;
 }
+
+// إغلاق مودال التركيبة عند الضغط خارج المحتوى أو على زر الإغلاق
+$('#closeModal').addEventListener('click', () => {
+  $('#recipeModal').classList.remove('show');
+  currentRecipeProductId = null;
+});
+
+$('#recipeModal').addEventListener('click', (e) => {
+  if (e.target === $('#recipeModal')) {
+    $('#recipeModal').classList.remove('show');
+    currentRecipeProductId = null;
+  }
+});
+
+// فتح مودال تغيير كلمة المرور
+$('#changePasswordBtn').addEventListener('click', () => {
+  $('#passwordErr').classList.remove('show');
+  $('#oldPassword').value = '';
+  $('#newPassword').value = '';
+  $('#passwordModal').classList.add('show');
+});
+
+// إغلاق مودال كلمة المرور
+$('#closePasswordModal').addEventListener('click', () => {
+  $('#passwordModal').classList.remove('show');
+});
+
+$('#passwordModal').addEventListener('click', (e) => {
+  if (e.target === $('#passwordModal')) {
+    $('#passwordModal').classList.remove('show');
+  }
+});
+
+// حفظ كلمة المرور الجديدة
+$('#savePasswordBtn').addEventListener('click', async () => {
+  const oldPass = $('#oldPassword').value.trim();
+  const newPass = $('#newPassword').value.trim();
+  const err = $('#passwordErr');
+  
+  if (!oldPass || !newPass) {
+    err.textContent = 'يرجى كتابة كلمة المرور الحالية والجديدة.';
+    err.classList.add('show');
+    return;
+  }
+  
+  err.classList.remove('show');
+  $('#savePasswordBtn').disabled = true;
+  $('#savePasswordBtn').textContent = 'جاري الحفظ…';
+  
+  try {
+    const username = sessionStorage.getItem('agro_user');
+    const { data, error } = await sb.rpc('agro_change_password', {
+      p_username: username,
+      p_old_password: oldPass,
+      p_new_password: newPass
+    });
+    
+    if (error) throw error;
+    
+    if (!data) {
+      err.textContent = 'كلمة المرور الحالية غير صحيحة.';
+      err.classList.add('show');
+    } else {
+      toast('تم تغيير كلمة المرور بنجاح.');
+      $('#passwordModal').classList.remove('show');
+    }
+  } catch (e) {
+    err.textContent = 'تعذّر تغيير كلمة المرور. يرجى إعداد دالة قاعدة البيانات أولاً.';
+    err.classList.add('show');
+    console.error(e);
+  } finally {
+    $('#savePasswordBtn').disabled = false;
+    $('#savePasswordBtn').textContent = 'حفظ كلمة المرور';
+  }
+});
 
 /* ===== إقلاع ===== */
 go(NAV.find(n=>n.k).k);

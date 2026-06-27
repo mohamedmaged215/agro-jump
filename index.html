@@ -109,7 +109,10 @@
         <div class="auth-err" id="err"></div>
         <div class="field">
           <label>كلمة المرور</label>
-          <input id="p" type="password" autocomplete="current-password" placeholder="••••••••" autofocus>
+          <div style="position: relative; display: flex; align-items: center;">
+            <input id="p" type="password" autocomplete="current-password" placeholder="••••••••" autofocus style="padding-left: 55px; width: 100%;">
+            <button id="toggleShow" type="button" style="position: absolute; left: 12px; background: none; border: none; color: var(--ink-soft); font-size: 0.82rem; font-weight: 700; cursor: pointer; height: 100%;">إظهار</button>
+          </div>
         </div>
         <button class="btn btn-primary" id="go">دخول</button>
       </div>
@@ -126,6 +129,19 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 if (sessionStorage.getItem('agro_role')) location.replace('app.html');
 
 let selectedUser = null, selectedRole = null;
+
+// إظهار وإخفاء كلمة المرور
+document.getElementById('toggleShow').addEventListener('click', () => {
+  const p = document.getElementById('p');
+  const btn = document.getElementById('toggleShow');
+  if (p.type === 'password') {
+    p.type = 'text';
+    btn.textContent = 'إخفاء';
+  } else {
+    p.type = 'password';
+    btn.textContent = 'إظهار';
+  }
+});
 
 const LABELS = { factory: 'المصنع', store: 'المحل' };
 
