@@ -250,11 +250,12 @@ async function renderModalRecipe(pid, mats){
 
   const rows=(lines||[]).map(l=>{
     const lineCost=+l.quantity_kg*+l.agro_materials.price_per_kg;
+    const qtyGrams = parseFloat((+l.quantity_kg * 1000).toFixed(2));
     return `<div class="recipe-line" data-lid="${l.id}">
       <span class="nm">${esc(l.agro_materials.name)}</span>
       <span class="num muted" style="min-width:140px">
-        <input class="inline-input rqty" type="number" step="0.0001" value="${l.quantity_kg}" style="width:80px"> كجم
-        × ${money(l.agro_materials.price_per_kg)}
+        <input class="inline-input rqty" type="number" step="0.1" value="${qtyGrams}" style="width:80px"> جرام
+        × ${money(l.agro_materials.price_per_kg)}/كجم
       </span>
       <span class="cost-cell">${money(lineCost)}</span>
       <button class="btn-sm btn-green save-rqty">حفظ</button>
@@ -271,7 +272,7 @@ async function renderModalRecipe(pid, mats){
       <div style="font-weight:700;margin-bottom:12px;color:var(--green-medium)">إضافة خامة جديدة للتركيبة:</div>
       <div class="form-grid">
         <div class="field"><label>الخامة</label><select class="r_mat">${(mats||[]).map(m=>`<option value="${m.id}">${esc(m.name)} (${money(m.price_per_kg)}/كجم)</option>`).join('')}</select></div>
-        <div class="field"><label>الكمية في العبوة (كجم)</label><input class="r_qty" type="number" step="0.0001" placeholder="0.25"></div>
+        <div class="field"><label>الكمية في العبوة (جرام)</label><input class="r_qty" type="number" step="1" placeholder="250"></div>
         <button class="btn btn-green r_add">إضافة خامة</button>
       </div>
     </div>`;
@@ -279,8 +280,9 @@ async function renderModalRecipe(pid, mats){
   /* إضافة خامة للتركيبة */
   container.querySelector('.r_add').addEventListener('click',async()=>{
     const material_id=container.querySelector('.r_mat').value;
-    const quantity_kg=parseFloat(container.querySelector('.r_qty').value);
-    if(!material_id||isNaN(quantity_kg)||quantity_kg<=0){toast('اختر الخامة واكتب كمية صحيحة.',true);return;}
+    const quantity_grams=parseFloat(container.querySelector('.r_qty').value);
+    if(!material_id||isNaN(quantity_grams)||quantity_grams<=0){toast('اختر الخامة واكتب كمية صحيحة.',true);return;}
+    const quantity_kg = quantity_grams / 1000;
     const{error}=await sb.from('agro_recipe').insert({product_id:pid,material_id,quantity_kg});
     if(error){toast(error.code==='23505'?'الخامة موجودة بالفعل في التركيبة.':'تعذّر الإضافة.',true);return;}
     toast('تمت إضافة الخامة للتركيبة.');
@@ -291,9 +293,10 @@ async function renderModalRecipe(pid, mats){
   container.querySelectorAll('.save-rqty').forEach(b=>b.addEventListener('click',async()=>{
     const line=b.closest('.recipe-line');
     const lid=line.dataset.lid;
-    const qty=parseFloat(line.querySelector('.rqty').value);
-    if(isNaN(qty)||qty<=0){toast('كمية غير صحيحة.',true);return;}
-    const{error}=await sb.from('agro_recipe').update({quantity_kg:qty}).eq('id',lid);
+    const qtyGrams=parseFloat(line.querySelector('.rqty').value);
+    if(isNaN(qtyGrams)||qtyGrams<=0){toast('كمية غير صحيحة.',true);return;}
+    const qtyKg = qtyGrams / 1000;
+    const{error}=await sb.from('agro_recipe').update({quantity_kg:qtyKg}).eq('id',lid);
     if(error){toast('تعذّر التحديث.',true);return;}
     toast('تم تحديث الكمية.'); renderModalRecipe(pid,mats); products();
   }));
