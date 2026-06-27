@@ -91,10 +91,10 @@ async function dashboard(){
   $('#view').innerHTML=`
     <div class="page-head"><h1>لوحة المتابعة</h1><p>نظرة سريعة على الخامات والتكاليف.</p></div>
     <div class="cards">
-      <div class="stat"><div class="k">${ic('mat')} عدد الخامات</div><div class="v">${(mats||[]).length}</div></div>
-      <div class="stat"><div class="k">${ic('prod')} عدد المنتجات</div><div class="v">${(prods||[]).length}</div></div>
-      <div class="stat"><div class="k">${ic('store')} قيمة مخزون الخامات</div><div class="v">${stockVal.toFixed(0)}<small> ج</small></div></div>
-      <div class="stat ${lowMats.length?'alert':''}"><div class="k">${ic('issue')} خامات تحت الحد</div><div class="v">${lowMats.length}</div></div>
+      <div class="stat clickable" id="card_mats"><div class="k">${ic('mat')} عدد الخامات</div><div class="v">${(mats||[]).length}</div></div>
+      <div class="stat clickable" id="card_prods"><div class="k">${ic('prod')} عدد المنتجات</div><div class="v">${(prods||[]).length}</div></div>
+      <div class="stat clickable" id="card_val"><div class="k">${ic('store')} قيمة مخزون الخامات</div><div class="v">${stockVal.toFixed(0)}<small> ج</small></div></div>
+      <div class="stat clickable ${lowMats.length?'alert':''}" id="card_low"><div class="k">${ic('issue')} خامات تحت الحد</div><div class="v">${lowMats.length}</div></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>تكلفة وربح المنتجات</h2><span class="pill ok">تُحسب لحظيًا</span></div>
@@ -107,10 +107,19 @@ async function dashboard(){
         </tbody></table>`:`<div class="empty">لا توجد منتجات بعد.</div>`}
       </div>
     </div>
-    ${lowMats.length?`<div class="panel"><div class="panel-head"><h2>تنبيه: خامات قاربت على النفاد</h2></div>
+    ${lowMats.length?`<div class="panel" id="low_stock_panel"><div class="panel-head"><h2>تنبيه: خامات قاربت على النفاد</h2></div>
       <div class="panel-body" style="padding:0"><table><thead><tr><th>الخامة</th><th>الرصيد</th><th>الحد</th></tr></thead><tbody>
       ${lowMats.map(m=>`<tr><td>${esc(m.name)}</td><td class="num">${qty(m.balance_kg)} كجم</td><td class="num muted">${qty(m.low_stock)} كجم</td></tr>`).join('')}
       </tbody></table></div></div>`:''}`;
+
+  $('#card_mats').addEventListener('click', () => go('materials'));
+  $('#card_prods').addEventListener('click', () => go('products'));
+  $('#card_val').addEventListener('click', () => go('materials'));
+  $('#card_low').addEventListener('click', () => {
+    const el = $('#low_stock_panel');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    else go('materials');
+  });
 }
 
 /* ========== الخامات ========== */

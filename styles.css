@@ -422,6 +422,17 @@ input, select {
   transform: translateY(-3px);
   box-shadow: var(--shadow-md);
 }
+.stat.clickable {
+  cursor: pointer;
+}
+.stat.clickable:hover {
+  border-color: var(--green-medium);
+  background: var(--green-glow);
+}
+.stat.clickable.alert:hover {
+  border-color: var(--danger);
+  background: rgba(179, 64, 47, 0.04);
+}
 .stat.alert::after {
   background: var(--danger);
 }
