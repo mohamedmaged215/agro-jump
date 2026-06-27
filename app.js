@@ -314,7 +314,7 @@ async function renderModalRecipe(pid, mats){
 }
 
 async function products(){
-  const [{data:prods},{data:mats}]=await Promise.all([getProdCost(),getMaterials()]);
+  const [{data:prods},{data:mats},{data:stocks}]=await Promise.all([getProdCost(),getMaterials(),getProdStock()]);
   $('#view').innerHTML=`
     <div class="page-head"><h1>المنتجات والتركيبة</h1><p>عرّف خامات كل منتج وكمياتها — التكلفة تُحسب لحظيًا.</p></div>
     <div class="panel">
@@ -329,26 +329,31 @@ async function products(){
       <div class="panel-head"><h2>المنتجات</h2></div>
       <div class="panel-body" style="padding:0">
         ${(prods||[]).length?`<table><thead><tr>
-          <th>المنتج</th><th>التكلفة</th><th>سعر البيع</th><th>الربح</th><th>إجراءات</th>
+          <th>المنتج</th><th>الرصيد بالمحل</th><th>التكلفة</th><th>سعر البيع</th><th>الربح</th><th>إجراءات</th>
         </tr></thead><tbody>
-          ${prods.map(p=>`<tr data-id="${p.id}">
-            <td>
-              <span class="name-display">${esc(p.name)}</span>
-              <span class="name-edit" style="display:none">
-                <input class="inline-input name-inp" value="${esc(p.name)}" style="width:120px">
-                <button class="btn-sm btn-green save-name">حفظ</button>
-                <button class="btn-sm btn-ghost cancel-name">إلغاء</button>
-              </span>
-            </td>
-            <td><span class="cost-cell">${money(p.cost)}</span></td>
-            <td><input class="inline-input sale" type="number" step="0.01" value="${p.sale_price}"> <button class="btn-sm btn-ghost save-sale">حفظ</button></td>
-            <td class="num ${(+p.profit>=0)?'profit-pos':'profit-neg'}">${money(p.profit)}</td>
-            <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <button class="btn-sm btn-ghost edit-name" title="تعديل الاسم">${ic('edit')}</button>
-              <button class="btn-sm btn-green recipe-btn">التركيبة</button>
-              <button class="btn-sm btn-danger del-prod" title="حذف المنتج">${ic('del')}</button>
-            </td>
-          </tr>`).join('')}
+          ${prods.map(p=>{
+            const s = (stocks||[]).find(x=>x.id===p.id);
+            const bal = s ? s.balance : 0;
+            return `<tr data-id="${p.id}">
+              <td>
+                <span class="name-display">${esc(p.name)}</span>
+                <span class="name-edit" style="display:none">
+                  <input class="inline-input name-inp" value="${esc(p.name)}" style="width:120px">
+                  <button class="btn-sm btn-green save-name">حفظ</button>
+                  <button class="btn-sm btn-ghost cancel-name">إلغاء</button>
+                </span>
+              </td>
+              <td class="num">${qty(bal)} عبوة</td>
+              <td><span class="cost-cell">${money(p.cost)}</span></td>
+              <td><input class="inline-input sale" type="number" step="0.01" value="${p.sale_price}"> <button class="btn-sm btn-ghost save-sale">حفظ</button></td>
+              <td class="num ${(+p.profit>=0)?'profit-pos':'profit-neg'}">${money(p.profit)}</td>
+              <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <button class="btn-sm btn-ghost edit-name" title="تعديل الاسم">${ic('edit')}</button>
+                <button class="btn-sm btn-green recipe-btn">التركيبة</button>
+                <button class="btn-sm btn-danger del-prod" title="حذف المنتج">${ic('del')}</button>
+              </td>
+            </tr>`;
+          }).join('')}
         </tbody></table>`:`<div class="empty">لا توجد منتجات بعد.</div>`}
       </div>
     </div>`;
