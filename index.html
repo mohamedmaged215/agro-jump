@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agro Jump — تسجيل الدخول</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ===== Login v2 — card picker ===== */
+.auth-wrap{
+  min-height:100dvh;display:grid;place-items:center;padding:24px;
+  background:
+    radial-gradient(120% 80% at 100% 0%,var(--green-tint) 0%,transparent 55%),
+    radial-gradient(100% 70% at 0% 100%,var(--amber-tint) 0%,transparent 50%),
+    var(--bg);
+}
+.auth-box{width:100%;max-width:480px}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px;justify-content:center}
+.auth-brand .mark{width:44px;height:44px;border-radius:13px;background:var(--green);display:grid;place-items:center;flex:none}
+.auth-brand .mark svg{width:24px;height:24px}
+.auth-brand .nm{font-size:1.6rem;font-weight:800;letter-spacing:-.03em}
+.auth-brand .nm span{color:var(--green)}
+
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.role-card{
+  border:2px solid var(--line);border-radius:16px;padding:22px 16px;
+  background:var(--surface);cursor:pointer;transition:.18s;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.role-card:hover{border-color:var(--green);background:var(--green-tint)}
+.role-card.selected{border-color:var(--green);background:var(--green-tint);box-shadow:0 0 0 4px rgba(47,107,79,.12)}
+.role-card .icon{width:52px;height:52px;border-radius:14px;background:var(--bg);display:grid;place-items:center;transition:.18s}
+.role-card.selected .icon{background:var(--green);color:#fff}
+.role-card .icon svg{width:26px;height:26px}
+.role-card .rtitle{font-weight:700;font-size:1.05rem}
+.role-card .rsub{font-size:.78rem;color:var(--ink-soft)}
+
+.pass-panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:24px;box-shadow:var(--shadow);
+  animation:slideIn .2s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.pass-who{display:flex;align-items:center;gap:10px;margin-bottom:18px;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+.pass-who .dot{width:10px;height:10px;border-radius:50%;background:var(--green)}
+.pass-who span{font-weight:700;font-size:1rem}
+.pass-who .change{margin-right:auto;font-size:.82rem;color:var(--green);cursor:pointer;font-weight:600}
+.pass-who .change:hover{text-decoration:underline}
+.pass-panel .field label{font-size:.82rem;font-weight:500;color:var(--ink-soft);display:block;margin-bottom:7px}
+.pass-panel .field input{
+  width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;
+  font-size:1.05rem;background:#FCFDFC;transition:.15s;letter-spacing:.06em
+}
+.pass-panel .field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
+.pass-panel .btn{margin-top:14px;width:100%}
+.auth-err{background:var(--danger-tint);color:var(--danger);font-size:.86rem;
+  padding:10px 13px;border-radius:9px;margin-bottom:14px;display:none}
+.auth-err.show{display:block}
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-box">
+
+    <div class="auth-brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22V9"/><path d="M12 9c0-3 2-5 6-5 0 4-3 6-6 6z"/>
+          <path d="M12 13c0-3-2-5-6-5 0 4 3 6 6 6z"/>
+        </svg>
+      </div>
+      <div class="nm">Agro <span>Jump</span></div>
+    </div>
+
+    <!-- الخطوة ١: اختيار النوع -->
+    <div id="step1">
+      <div class="role-cards">
+        <div class="role-card" id="card-factory" data-role="factory" data-user="factory">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18V10l-6 4V10l-6 4V5H3z"/>
+            </svg>
+          </div>
+          <div class="rtitle">المصنع</div>
+          <div class="rsub">الخامات · الإنتاج · التكلفة</div>
+        </div>
+        <div class="role-card" id="card-store" data-role="store" data-user="store">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>
+            </svg>
+          </div>
+          <div class="rtitle">المحل</div>
+          <div class="rsub">البيع · المخزون</div>
+        </div>
+      </div>
+      <p style="text-align:center;color:var(--ink-soft);font-size:.88rem">اختر نوع الدخول أولًا</p>
+    </div>
+
+    <!-- الخطوة ٢: كلمة المرور -->
+    <div id="step2" style="display:none">
+      <div class="pass-panel">
+        <div class="pass-who">
+          <div class="dot"></div>
+          <span id="who-label">—</span>
+          <span class="change" id="change-btn">← تغيير</span>
+        </div>
+        <div class="auth-err" id="err"></div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <input id="p" type="password" autocomplete="current-password" placeholder="••••••••" autofocus>
+        </div>
+        <button class="btn btn-primary" id="go">دخول</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+if (sessionStorage.getItem('agro_role')) location.replace('app.html');
+
+let selectedUser = null, selectedRole = null;
+
+const LABELS = { factory: 'المصنع', store: 'المحل' };
+
+// اختيار الكارت
+document.querySelectorAll('.role-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedUser = card.dataset.user;
+    selectedRole = card.dataset.role;
+    document.getElementById('who-label').textContent = LABELS[selectedRole];
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+    setTimeout(() => document.getElementById('p').focus(), 50);
+  });
+});
+
+// زرار التغيير
+document.getElementById('change-btn').addEventListener('click', () => {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('err').classList.remove('show');
+  document.getElementById('p').value = '';
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+});
+
+// الدخول
+async function login() {
+  const password = document.getElementById('p').value;
+  const err = document.getElementById('err');
+  const btn = document.getElementById('go');
+  if (!password) { err.textContent = 'اكتب كلمة المرور.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'جاري التحقق…';
+  try {
+    const { data, error } = await sb.rpc('agro_login', { p_username: selectedUser, p_password: password });
+    if (error) throw error;
+    if (!data) { err.textContent = 'كلمة المرور غير صحيحة.'; err.classList.add('show'); return; }
+    sessionStorage.setItem('agro_role', data);
+    sessionStorage.setItem('agro_user', selectedUser);
+    location.replace('app.html');
+  } catch(e) {
+    err.textContent = 'تعذّر الاتصال. حاول مرة أخرى.';
+    err.classList.add('show');
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = 'دخول';
+  }
+}
+document.getElementById('go').addEventListener('click', login);
+document.getElementById('p').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>
