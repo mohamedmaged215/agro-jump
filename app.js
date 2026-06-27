@@ -212,9 +212,9 @@ async function materials(){
     /* حذف */
     tr.querySelector('.del-mat').addEventListener('click',async()=>{
       const name=tr.querySelector('.name-display').textContent.trim();
-      if(!confirm_del(`حذف الخامة "${name}"؟\nتأكد أنها غير مستخدمة في أي تركيبة.`))return;
+      if(!confirm_del(`حذف الخامة "${name}"؟\nسيتم حذف جميع حركات المخزون والتركيبات المرتبطة بها.`))return;
       const{error}=await sb.from('agro_materials').delete().eq('id',id);
-      if(error){toast(error.message?.includes('foreign')?'لا يمكن الحذف — الخامة مستخدمة في تركيبة منتج.':'تعذّر الحذف.',true);return;}
+      if(error){toast(`تعذّر الحذف: قد تكون الخامة مستخدمة في حركات مخزون. يرجى تطبيق كود SQL لتفعيل الحذف التلقائي.`,true);return;}
       toast('تم حذف الخامة.'); materials();
     });
   });
