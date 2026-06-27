@@ -132,6 +132,7 @@ async function materials(){
       <div class="panel-body"><div class="form-grid">
         <div class="field"><label>اسم الخامة</label><input id="m_name" placeholder="مثال: يوريا"></div>
         <div class="field"><label>سعر الكيلو (ج)</label><input id="m_price" type="number" step="0.01" placeholder="0.00"></div>
+        <div class="field"><label>الرصيد الافتتاحي (كجم)</label><input id="m_balance" type="number" step="0.001" placeholder="0"></div>
         <div class="field"><label>حد التنبيه (كجم)</label><input id="m_low" type="number" step="0.001" placeholder="0"></div>
         <button class="btn btn-green" id="m_add">إضافة الخامة</button>
       </div></div>
@@ -158,7 +159,7 @@ async function materials(){
               <td><span class="pill ${low?'low':'ok'}">${low?'تحت الحد':'متاح'}</span></td>
               <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                 <button class="btn-sm btn-ghost edit-name" title="تعديل الاسم">${ic('edit')}</button>
-                <button class="btn-sm btn-ghost jard">جرد</button>
+                <button class="btn-sm btn-ghost jard">ضبط الرصيد</button>
                 <button class="btn-sm btn-danger del-mat" title="حذف الخامة">${ic('del')}</button>
               </td>
             </tr>`;
@@ -168,11 +169,28 @@ async function materials(){
     </div>`;
 
   $('#m_add').addEventListener('click',async()=>{
-    const name=$('#m_name').value.trim(),price=parseFloat($('#m_price').value)||0,low=parseFloat($('#m_low').value)||0;
+    const name=$('#m_name').value.trim();
+    const price=parseFloat($('#m_price').value)||0;
+    const low=parseFloat($('#m_low').value)||0;
+    const initBal=parseFloat($('#m_balance').value)||0;
     if(!name){toast('اكتب اسم الخامة.',true);return;}
-    const{error}=await sb.from('agro_materials').insert({name,price_per_kg:price,low_stock:low});
+    
+    // إدخال الخامة والحصول على الصف المدرج
+    const{data, error}=await sb.from('agro_materials').insert({name,price_per_kg:price,low_stock:low}).select();
     if(error){toast('تعذّر الحفظ.',true);return;}
-    toast('تمت إضافة الخامة.'); materials();
+    
+    // إذا كان هناك رصيد افتتاحي، نسجله كحركة تسوية
+    if(initBal > 0 && data && data.length > 0) {
+      const matId = data[0].id;
+      await sb.from('agro_movements').insert({
+        type: 'adjust_material',
+        material_id: matId,
+        quantity: initBal,
+        note: 'رصيد افتتاحي عند الإنشاء'
+      });
+    }
+    
+    toast('تمت إضافة الخامة بنجاح.'); materials();
   });
 
   $$('#view tr[data-id]').forEach(tr=>{
@@ -209,7 +227,7 @@ async function materials(){
     /* جرد */
     tr.querySelector('.jard').addEventListener('click',async()=>{
       const cur=tr.querySelector('.bal').textContent;
-      const v=prompt(`الجرد الفعلي للخامة (الرصيد الدفتري: ${cur})\nاكتب الكمية الفعلية بالكيلو:`);
+      const v=prompt(`تعديل رصيد الخامة "${tr.querySelector('.name-display').textContent.trim()}"\nالرصيد الدفتري الحالي: ${cur}\nاكتب الرصيد الفعلي الجديد بالكيلو:`);
       if(v===null)return;
       const actual=parseFloat(v);if(isNaN(actual)){toast('قيمة غير صحيحة.',true);return;}
       const book=parseFloat(cur),diff=+(actual-book).toFixed(4);
@@ -492,13 +510,29 @@ async function store_products(){
   $('#view').innerHTML=`
     <div class="page-head"><h1>مخزون المنتجات</h1><p>الأرصدة المتاحة في المحل للبيع.</p></div>
     <div class="panel"><div class="panel-body" style="padding:0">
-      ${(prods||[]).length?`<table><thead><tr><th>المنتج</th><th>الرصيد المتاح</th><th>سعر البيع</th><th>الحالة</th></tr></thead><tbody>
+      ${(prods||[]).length?`<table><thead><tr><th>المنتج</th><th>الرصيد المتاح</th><th>سعر البيع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>
         ${prods.map(p=>{const low=+p.balance<=+p.low_stock&&+p.low_stock>0;
-          return `<tr><td>${esc(p.name)}</td><td class="num">${qty(p.balance)} عبوة</td>
+          return `<tr data-id="${p.id}"><td>${esc(p.name)}</td><td class="num bal">${qty(p.balance)} عبوة</td>
           <td class="num">${money(p.sale_price)}</td>
-          <td><span class="pill ${low?'low':'ok'}">${low?'منخفض':'متاح'}</span></td></tr>`;}).join('')}
+          <td><span class="pill ${low?'low':'ok'}">${low?'منخفض':'متاح'}</span></td>
+          <td><button class="btn-sm btn-ghost jard-prod">ضبط الرصيد</button></td></tr>`;}).join('')}
       </tbody></table>`:`<div class="empty">لا توجد منتجات بعد.</div>`}
     </div></div>`;
+
+  $$('#view tr[data-id]').forEach(tr=>{
+    const id=tr.dataset.id;
+    const p=prods.find(x=>x.id.toString()===id);
+    tr.querySelector('.jard-prod').addEventListener('click',async()=>{
+      const cur=parseFloat(p.balance);
+      const v=prompt(`تعديل رصيد المنتج "${p.name}"\nالرصيد الدفتري الحالي: ${cur} عبوة\nاكتب الرصيد الجديد:`);
+      if(v===null)return;
+      const actual=parseFloat(v);if(isNaN(actual)){toast('قيمة غير صحيحة.',true);return;}
+      const diff=+(actual-cur).toFixed(4);
+      const{error}=await sb.from('agro_movements').insert({type:'adjust_product',product_id:id,quantity:diff,note:`تسوية جرد منتج (فعلي ${actual})`});
+      if(error){toast('تعذّر تعديل الرصيد.',true);return;}
+      toast(`تم ضبط الرصيد إلى ${actual} عبوة.`); store_products();
+    });
+  });
 }
 
 /* ========== تسجيل بيع ========== */
