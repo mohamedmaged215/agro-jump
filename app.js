@@ -37,8 +37,91 @@ const ICON={
   move:'<path d="M7 7h14"/><path d="M7 7l4-4M7 7l4 4"/><path d="M17 17H3"/><path d="M17 17l-4-4M17 17l-4 4"/>',
   edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
   del:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>',
+  print:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
 };
 const ic = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+
+/* ===== القائمة المنسدلة القابلة للبحث ===== */
+function initSearchableSelect(selectEl) {
+  if (!selectEl || selectEl.dataset.searchableInitialized) return;
+  selectEl.dataset.searchableInitialized = 'true';
+  selectEl.style.display = 'none';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'search-select-wrapper';
+
+  const trigger = document.createElement('div');
+  trigger.className = 'search-select-trigger';
+  
+  const updateTriggerText = () => {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    trigger.textContent = selectedOpt ? selectedOpt.textContent : 'اختر من القائمة...';
+  };
+  updateTriggerText();
+
+  const popover = document.createElement('div');
+  popover.className = 'search-select-popover';
+  popover.style.display = 'none';
+
+  const searchInp = document.createElement('input');
+  searchInp.className = 'search-select-input';
+  searchInp.placeholder = 'اكتب للبحث...';
+
+  const optionsDiv = document.createElement('div');
+  optionsDiv.className = 'search-select-options';
+
+  const rebuildOptions = () => {
+    optionsDiv.innerHTML = '';
+    const query = searchInp.value.toLowerCase();
+    Array.from(selectEl.options).forEach((opt, idx) => {
+      if (opt.textContent.toLowerCase().includes(query)) {
+        const item = document.createElement('div');
+        item.className = 'search-select-option';
+        if (opt.selected) item.classList.add('selected');
+        item.textContent = opt.textContent;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectEl.selectedIndex = idx;
+          selectEl.dispatchEvent(new Event('change'));
+          updateTriggerText();
+          popover.style.display = 'none';
+        });
+        optionsDiv.appendChild(item);
+      }
+    });
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.search-select-popover').forEach(p => {
+      if (p !== popover) p.style.display = 'none';
+    });
+    const isOpen = popover.style.display === 'block';
+    popover.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+      searchInp.value = '';
+      rebuildOptions();
+      searchInp.focus();
+    }
+  });
+
+  searchInp.addEventListener('input', rebuildOptions);
+
+  popover.appendChild(searchInp);
+  popover.appendChild(optionsDiv);
+  wrapper.appendChild(trigger);
+  wrapper.appendChild(popover);
+
+  selectEl.parentNode.insertBefore(wrapper, selectEl);
+
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) {
+      popover.style.display = 'none';
+    }
+  });
+
+  selectEl.addEventListener('change', updateTriggerText);
+}
 
 /* ===== شريط المستخدم ===== */
 $('#roleBadge').textContent = role==='factory'?'المصنع':'المحل';
@@ -89,7 +172,13 @@ async function dashboard(){
   const lowMats=(mats||[]).filter(m=>+m.balance_kg<=+m.low_stock&&+m.low_stock>0);
   const stockVal=(mats||[]).reduce((s,m)=>s+(+m.balance_kg*+m.price_per_kg),0);
   $('#view').innerHTML=`
-    <div class="page-head"><h1>لوحة المتابعة</h1><p>نظرة سريعة على الخامات والتكاليف.</p></div>
+    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1>لوحة المتابعة</h1>
+        <p>نظرة سريعة على الخامات والتكاليف.</p>
+      </div>
+      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
+    </div>
     <div class="cards">
       <div class="stat clickable" id="card_mats"><div class="k">${ic('mat')} عدد الخامات</div><div class="v">${(mats||[]).length}</div></div>
       <div class="stat clickable" id="card_prods"><div class="k">${ic('prod')} عدد المنتجات</div><div class="v">${(prods||[]).length}</div></div>
@@ -126,7 +215,13 @@ async function dashboard(){
 async function materials(){
   const {data:mats}=await getMaterials();
   $('#view').innerHTML=`
-    <div class="page-head"><h1>الخامات</h1><p>عدّل السعر أو الاسم — يتغيّر فورًا في كل المنتجات.</p></div>
+    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1>الخامات</h1>
+        <p>عدّل السعر أو الاسم — يتغيّر فورًا في كل المنتجات.</p>
+      </div>
+      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
+    </div>
     <div class="panel">
       <div class="panel-head"><h2>إضافة خامة جديدة</h2></div>
       <div class="panel-body"><div class="form-grid">
@@ -329,6 +424,7 @@ async function renderModalRecipe(pid, mats){
     if(error){toast('تعذّر الحذف.',true);return;}
     toast('تم حذف الخامة من التركيبة.'); renderModalRecipe(pid,mats); products();
   }));
+  $$('#modalBody select').forEach(initSearchableSelect);
 }
 
 async function products(){
@@ -454,6 +550,7 @@ async function purchase(){
     if(error){toast('تعذّر تسجيل الشراء.',true);return;}
     toast('تم الشراء — الرصيد والسعر تحدّثا في كل المنتجات.'); purchase();
   });
+  $$('#view select').forEach(initSearchableSelect);
 }
 
 /* ========== صرف خامات ========== */
@@ -478,6 +575,7 @@ async function issue(){
     if(error){toast('تعذّر تسجيل الصرف.',true);return;}
     toast('تم تسجيل الصرف وخصمه من المخزن.'); issue();
   });
+  $$('#view select').forEach(initSearchableSelect);
 }
 
 /* ========== تسجيل إنتاج ========== */
@@ -502,13 +600,20 @@ async function production(){
     if(error){toast('تعذّر تسجيل الإنتاج.',true);return;}
     toast('تم تسجيل الإنتاج وإضافته للمحل.'); production();
   });
+  $$('#view select').forEach(initSearchableSelect);
 }
 
 /* ========== مخزون المنتجات (المحل) ========== */
 async function store_products(){
   const{data:prods}=await getProdStock();
   $('#view').innerHTML=`
-    <div class="page-head"><h1>مخزون المنتجات</h1><p>الأرصدة المتاحة في المحل للبيع.</p></div>
+    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1>مخزون المنتجات</h1>
+        <p>الأرصدة المتاحة في المحل للبيع.</p>
+      </div>
+      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
+    </div>
     <div class="panel"><div class="panel-body" style="padding:0">
       ${(prods||[]).length?`<table><thead><tr><th>المنتج</th><th>الرصيد المتاح</th><th>سعر البيع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>
         ${prods.map(p=>{const low=+p.balance<=+p.low_stock&&+p.low_stock>0;
@@ -558,6 +663,7 @@ async function sale(){
     if(error){toast('تعذّر تسجيل البيع.',true);return;}
     toast('تم تسجيل البيع وخصمه من المخزون.'); sale();
   });
+  $$('#view select').forEach(initSearchableSelect);
 }
 
 /* ========== كل الحركات ========== */
@@ -580,19 +686,36 @@ async function movements(){
   const {data}=await query.order('created_at',{ascending:false}).limit(100);
 
   $('#view').innerHTML=`
-    <div class="page-head"><h1>كل الحركات</h1><p>آخر 100 حركة على المخزون.</p></div>
+    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1>كل الحركات</h1>
+        <p>آخر 100 حركة على المخزون.</p>
+      </div>
+      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
+    </div>
     <div class="panel"><div class="panel-body" style="padding:0">
-      ${(data||[]).length?`<table><thead><tr><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>ملاحظة</th></tr></thead><tbody>
+      ${(data||[]).length?`<table><thead><tr><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>ملاحظة</th><th class="no-print">إجراءات</th></tr></thead><tbody>
         ${data.map(m=>{const[lbl,cls]=TYPE[m.type]||[m.type,'ok'];
           const item=m.agro_materials?.name||m.agro_products?.name||'—';
           const unit=m.material_id?'كجم':'عبوة';
-          return `<tr><td class="num muted">${fdate(m.created_at)}</td>
+          return `<tr data-mid="${m.id}"><td class="num muted">${fdate(m.created_at)}</td>
             <td><span class="pill ${cls}">${lbl}</span></td>
             <td>${esc(item)}</td>
             <td class="num">${qty(m.quantity)} ${unit}</td>
-            <td class="muted">${esc(m.note||'')}</td></tr>`;}).join('')}
+            <td class="muted">${esc(m.note||'')}</td>
+            <td class="no-print"><button class="btn-sm btn-danger del-move" title="حذف الحركة">${ic('del')}</button></td></tr>`;}).join('')}
       </tbody></table>`:`<div class="empty">لا توجد حركات بعد.</div>`}
     </div></div>`;
+
+  $$('#view tr[data-mid]').forEach(tr=>{
+    const mid=tr.dataset.mid;
+    tr.querySelector('.del-move').addEventListener('click',async()=>{
+      if(!confirm_del('حذف هذه الحركة؟\nسيؤدي ذلك لإعادة احتساب رصيد المخزون التراكمي تلقائيًا.'))return;
+      const{error}=await sb.from('agro_movements').delete().eq('id',mid);
+      if(error){toast('تعذّر الحذف.',true);return;}
+      toast('تم حذف الحركة وتحديث الأرصدة.'); movements();
+    });
+  });
 }
 
 // إغلاق مودال التركيبة عند الضغط خارج المحتوى أو على زر الإغلاق
