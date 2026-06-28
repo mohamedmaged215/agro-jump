@@ -42,86 +42,67 @@ const ICON={
 };
 const ic = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
 
-/* ===== القائمة المنسدلة القابلة للبحث ===== */
+/* ===== القائمة المنسدلة القابلة للبحث (Datalist) ===== */
 function initSearchableSelect(selectEl) {
   if (!selectEl || selectEl.dataset.searchableInitialized) return;
   selectEl.dataset.searchableInitialized = 'true';
   selectEl.style.display = 'none';
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'search-select-wrapper';
+  const datalistId = `dl_${selectEl.id || Math.random().toString(36).substr(2, 9)}`;
+  const datalist = document.createElement('datalist');
+  datalist.id = datalistId;
 
-  const trigger = document.createElement('div');
-  trigger.className = 'search-select-trigger';
-  
-  const updateTriggerText = () => {
+  const rebuildDatalist = () => {
+    datalist.innerHTML = Array.from(selectEl.options)
+      .map(o => `<option value="${o.textContent}" data-val="${o.value}"></option>`)
+      .join('');
+  };
+  rebuildDatalist();
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'datalist-select-input';
+  input.setAttribute('list', datalistId);
+  input.placeholder = 'ابحث أو اختر من القائمة...';
+
+  const selectedOpt = selectEl.options[selectEl.selectedIndex];
+  input.value = selectedOpt ? selectedOpt.textContent : '';
+
+  const syncInputToSelect = () => {
+    const val = input.value.trim();
+    const opts = Array.from(datalist.options);
+    const matchedOpt = opts.find(o => o.value === val);
+    if (matchedOpt) {
+      selectEl.value = matchedOpt.dataset.val;
+      selectEl.dispatchEvent(new Event('change'));
+    } else {
+      selectEl.value = '';
+      selectEl.dispatchEvent(new Event('change'));
+    }
+  };
+
+  input.addEventListener('input', syncInputToSelect);
+  input.addEventListener('change', syncInputToSelect);
+
+  let lastVal = input.value;
+  input.addEventListener('focus', () => {
+    lastVal = input.value;
+    input.value = '';
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      const selectedOpt = selectEl.options[selectEl.selectedIndex];
+      input.value = selectedOpt ? selectedOpt.textContent : lastVal;
+    }, 150);
+  });
+
+  selectEl.addEventListener('change', () => {
     const selectedOpt = selectEl.options[selectEl.selectedIndex];
-    trigger.textContent = selectedOpt ? selectedOpt.textContent : 'اختر من القائمة...';
-  };
-  updateTriggerText();
-
-  const popover = document.createElement('div');
-  popover.className = 'search-select-popover';
-  popover.style.display = 'none';
-
-  const searchInp = document.createElement('input');
-  searchInp.className = 'search-select-input';
-  searchInp.placeholder = 'اكتب للبحث...';
-
-  const optionsDiv = document.createElement('div');
-  optionsDiv.className = 'search-select-options';
-
-  const rebuildOptions = () => {
-    optionsDiv.innerHTML = '';
-    const query = searchInp.value.toLowerCase();
-    Array.from(selectEl.options).forEach((opt, idx) => {
-      if (opt.textContent.toLowerCase().includes(query)) {
-        const item = document.createElement('div');
-        item.className = 'search-select-option';
-        if (opt.selected) item.classList.add('selected');
-        item.textContent = opt.textContent;
-        item.addEventListener('click', (e) => {
-          e.stopPropagation();
-          selectEl.selectedIndex = idx;
-          selectEl.dispatchEvent(new Event('change'));
-          updateTriggerText();
-          popover.style.display = 'none';
-        });
-        optionsDiv.appendChild(item);
-      }
-    });
-  };
-
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.querySelectorAll('.search-select-popover').forEach(p => {
-      if (p !== popover) p.style.display = 'none';
-    });
-    const isOpen = popover.style.display === 'block';
-    popover.style.display = isOpen ? 'none' : 'block';
-    if (!isOpen) {
-      searchInp.value = '';
-      rebuildOptions();
-      searchInp.focus();
-    }
+    input.value = selectedOpt ? selectedOpt.textContent : '';
   });
 
-  searchInp.addEventListener('input', rebuildOptions);
-
-  popover.appendChild(searchInp);
-  popover.appendChild(optionsDiv);
-  wrapper.appendChild(trigger);
-  wrapper.appendChild(popover);
-
-  selectEl.parentNode.insertBefore(wrapper, selectEl);
-
-  document.addEventListener('click', (e) => {
-    if (!wrapper.contains(e.target)) {
-      popover.style.display = 'none';
-    }
-  });
-
-  selectEl.addEventListener('change', updateTriggerText);
+  selectEl.parentNode.insertBefore(datalist, selectEl);
+  selectEl.parentNode.insertBefore(input, selectEl);
 }
 
 /* ===== شريط المستخدم ===== */
