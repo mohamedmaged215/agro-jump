@@ -38,6 +38,7 @@ const ICON={
   edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
   del:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>',
   print:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  rep:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
 };
 const ic = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
 
@@ -139,18 +140,22 @@ const NAV = role==='factory' ? [
   {k:'purchase',    t:'شراء خامات',          i:'buy'},
   {k:'issue',       t:'صرف خامات',           i:'issue'},
   {k:'production',  t:'تسجيل إنتاج',         i:'factory'},
+  {sec:'التقارير والطباعة'},
+  {k:'reports',     t:'التقارير',            i:'rep'},
   {sec:'السجل'},
   {k:'movements',   t:'كل الحركات',          i:'move'},
 ] : [
   {sec:'المحل'},
   {k:'store_products', t:'مخزون المنتجات', i:'store'},
   {k:'sale',           t:'تسجيل بيع',      i:'sale'},
+  {sec:'التقارير والطباعة'},
+  {k:'reports',        t:'التقارير',       i:'rep'},
   {sec:'السجل'},
   {k:'movements',      t:'كل الحركات',     i:'move'},
 ];
 
 const openRecipes = new Set();
-const ROUTES={dashboard,materials,products,purchase,issue,production,store_products,sale,movements};
+const ROUTES={dashboard,materials,products,purchase,issue,production,store_products,sale,movements,reports};
 
 function renderNav(active){
   $('#nav').innerHTML=NAV.map(n=>n.sec
@@ -172,13 +177,7 @@ async function dashboard(){
   const lowMats=(mats||[]).filter(m=>+m.balance_kg<=+m.low_stock&&+m.low_stock>0);
   const stockVal=(mats||[]).reduce((s,m)=>s+(+m.balance_kg*+m.price_per_kg),0);
   $('#view').innerHTML=`
-    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-      <div>
-        <h1>لوحة المتابعة</h1>
-        <p>نظرة سريعة على الخامات والتكاليف.</p>
-      </div>
-      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
-    </div>
+    <div class="page-head"><h1>لوحة المتابعة</h1><p>نظرة سريعة على الخامات والتكاليف.</p></div>
     <div class="cards">
       <div class="stat clickable" id="card_mats"><div class="k">${ic('mat')} عدد الخامات</div><div class="v">${(mats||[]).length}</div></div>
       <div class="stat clickable" id="card_prods"><div class="k">${ic('prod')} عدد المنتجات</div><div class="v">${(prods||[]).length}</div></div>
@@ -215,13 +214,7 @@ async function dashboard(){
 async function materials(){
   const {data:mats}=await getMaterials();
   $('#view').innerHTML=`
-    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-      <div>
-        <h1>الخامات</h1>
-        <p>عدّل السعر أو الاسم — يتغيّر فورًا في كل المنتجات.</p>
-      </div>
-      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
-    </div>
+    <div class="page-head"><h1>الخامات</h1><p>عدّل السعر أو الاسم — يتغيّر فورًا في كل المنتجات.</p></div>
     <div class="panel">
       <div class="panel-head"><h2>إضافة خامة جديدة</h2></div>
       <div class="panel-body"><div class="form-grid">
@@ -607,13 +600,7 @@ async function production(){
 async function store_products(){
   const{data:prods}=await getProdStock();
   $('#view').innerHTML=`
-    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-      <div>
-        <h1>مخزون المنتجات</h1>
-        <p>الأرصدة المتاحة في المحل للبيع.</p>
-      </div>
-      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
-    </div>
+    <div class="page-head"><h1>مخزون المنتجات</h1><p>الأرصدة المتاحة في المحل للبيع.</p></div>
     <div class="panel"><div class="panel-body" style="padding:0">
       ${(prods||[]).length?`<table><thead><tr><th>المنتج</th><th>الرصيد المتاح</th><th>سعر البيع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>
         ${prods.map(p=>{const low=+p.balance<=+p.low_stock&&+p.low_stock>0;
@@ -686,13 +673,7 @@ async function movements(){
   const {data}=await query.order('created_at',{ascending:false}).limit(100);
 
   $('#view').innerHTML=`
-    <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-      <div>
-        <h1>كل الحركات</h1>
-        <p>آخر 100 حركة على المخزون.</p>
-      </div>
-      <button class="btn btn-green no-print" onclick="window.print()">${ic('print')} طباعة التقرير (PDF)</button>
-    </div>
+    <div class="page-head"><h1>كل الحركات</h1><p>آخر 100 حركة على المخزون.</p></div>
     <div class="panel"><div class="panel-body" style="padding:0">
       ${(data||[]).length?`<table><thead><tr><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>ملاحظة</th><th class="no-print">إجراءات</th></tr></thead><tbody>
         ${data.map(m=>{const[lbl,cls]=TYPE[m.type]||[m.type,'ok'];
@@ -792,6 +773,224 @@ $('#savePasswordBtn').addEventListener('click', async () => {
     $('#savePasswordBtn').textContent = 'حفظ كلمة المرور';
   }
 });
+
+/* ========== التقارير والطباعة ========== */
+async function reports(){
+  $('#view').innerHTML=`
+    <div class="page-head no-print"><h1>التقارير والطباعة</h1><p>اختر التقرير المطلوب لعرضه وطباعته أو حفظه كملف PDF.</p></div>
+    <div class="cards no-print" id="reports_grid"></div>
+    <div id="report_view"></div>
+  `;
+
+  const grid = $('#reports_grid');
+  const view = $('#report_view');
+
+  const reportTypes = role === 'factory' ? [
+    { id: 'prod_cost', title: 'تقرير تكلفة وأرباح المنتجات', desc: 'تفاصيل تكاليف التصنيع، سعر البيع، وصافي الربح للمنتجات.', icon: 'prod' },
+    { id: 'mats_stock', title: 'تقرير أرصدة وحالة الخامات', desc: 'أرصدة المواد الخام المتوفرة في المصنع وأسعار الشراء الحالية.', icon: 'mat' },
+    { id: 'movements_log', title: 'تقرير حركة المخزون بالكامل', desc: 'سجل تفصيلي لآخر 100 حركة (شراء، صرف، تسويات، تصنيع).', icon: 'move' }
+  ] : [
+    { id: 'store_stock', title: 'تقرير مخزون المنتجات بالمحل', desc: 'الأرصدة الحالية للمنتجات النهائية المتوفرة للبيع في المحل.', icon: 'store' },
+    { id: 'movements_log', title: 'تقرير حركة المبيعات والوارد', desc: 'سجل تفصيلي لآخر 100 حركة مبيعات وتوريد للمحل.', icon: 'move' }
+  ];
+
+  const renderGrid = () => {
+    grid.style.display = 'grid';
+    view.innerHTML = '';
+    grid.innerHTML = reportTypes.map(r => `
+      <div class="stat clickable" data-rid="${r.id}">
+        <div class="k">${ic(r.icon)} ${r.title}</div>
+        <div class="muted" style="font-size:0.86rem;margin-top:8px;line-height:1.4;">${r.desc}</div>
+      </div>
+    `).join('');
+
+    $$('#reports_grid .stat').forEach(card => card.addEventListener('click', () => loadReport(card.dataset.rid)));
+  };
+
+  const loadReport = async (rid) => {
+    grid.style.display = 'none';
+    view.innerHTML = '<div class="empty">جاري إعداد التقرير…</div>';
+
+    if (rid === 'prod_cost') {
+      const {data} = await getProdCost();
+      const {data:stocks} = await getProdStock();
+      view.innerHTML = `
+        <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 style="color:var(--green)">تقرير أرباح وتكاليف المنتجات</h1>
+            <p>التاريخ: ${fdate(new Date())}</p>
+          </div>
+          <div class="no-print" style="display:flex;gap:10px;">
+            <button class="btn btn-ghost go-back">رجوع</button>
+            <button class="btn btn-green" onclick="window.print()">${ic('print')} طباعة / حفظ PDF</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead>
+                <tr>
+                  <th>اسم المنتج</th>
+                  <th>الرصيد بالمحل</th>
+                  <th>تكلفة التصنيع</th>
+                  <th>سعر البيع</th>
+                  <th>صافي الربح</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data||[]).map(p => {
+                  const s = (stocks||[]).find(x=>x.id===p.id);
+                  const bal = s ? s.balance : 0;
+                  return `<tr>
+                    <td><strong>${esc(p.name)}</strong></td>
+                    <td class="num">${qty(bal)} عبوة</td>
+                    <td class="num">${money(p.cost)}</td>
+                    <td class="num">${money(p.sale_price)}</td>
+                    <td class="num ${+p.profit>=0?'profit-pos':'profit-neg'}">${money(p.profit)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (rid === 'mats_stock') {
+      const {data} = await getMaterials();
+      view.innerHTML = `
+        <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 style="color:var(--green)">تقرير أرصدة وحالة الخامات</h1>
+            <p>التاريخ: ${fdate(new Date())}</p>
+          </div>
+          <div class="no-print" style="display:flex;gap:10px;">
+            <button class="btn btn-ghost go-back">رجوع</button>
+            <button class="btn btn-green" onclick="window.print()">${ic('print')} طباعة / حفظ PDF</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead>
+                <tr>
+                  <th>اسم الخامة</th>
+                  <th>سعر الكيلو</th>
+                  <th>الرصيد المتوفر</th>
+                  <th>الحد الأدنى للتنبيه</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data||[]).map(m => {
+                  const low = +m.balance_kg <= +m.low_stock && +m.low_stock > 0;
+                  return `<tr>
+                    <td><strong>${esc(m.name)}</strong></td>
+                    <td class="num">${money(m.price_per_kg)}</td>
+                    <td class="num">${qty(m.balance_kg)} كجم</td>
+                    <td class="num muted">${qty(m.low_stock)} كجم</td>
+                    <td><span class="pill ${low?'low':'ok'}">${low?'تحت الحد':'متاح'}</span></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (rid === 'store_stock') {
+      const {data} = await getProdStock();
+      view.innerHTML = `
+        <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 style="color:var(--green)">تقرير مخزون المنتجات بالمحل</h1>
+            <p>التاريخ: ${fdate(new Date())}</p>
+          </div>
+          <div class="no-print" style="display:flex;gap:10px;">
+            <button class="btn btn-ghost go-back">رجوع</button>
+            <button class="btn btn-green" onclick="window.print()">${ic('print')} طباعة / حفظ PDF</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead>
+                <tr>
+                  <th>اسم المنتج</th>
+                  <th>الرصيد المتاح</th>
+                  <th>سعر البيع</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data||[]).map(p => {
+                  const low = +p.balance <= +p.low_stock && +p.low_stock > 0;
+                  return `<tr>
+                    <td><strong>${esc(p.name)}</strong></td>
+                    <td class="num">${qty(p.balance)} عبوة</td>
+                    <td class="num">${money(p.sale_price)}</td>
+                    <td><span class="pill ${low?'low':'ok'}">${low?'منخفض':'متاح'}</span></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (rid === 'movements_log') {
+      let query = sb.from('agro_movements')
+        .select('id,type,quantity,unit_price,note,created_at,material_id,product_id,agro_materials(name),agro_products(name)');
+      if (role === 'store') {
+        query = query.in('type', ['production', 'sale', 'adjust_product']);
+      } else {
+        query = query.in('type', ['purchase', 'issue', 'adjust_material', 'production']);
+      }
+      const {data} = await query.order('created_at',{ascending:false}).limit(100);
+      view.innerHTML = `
+        <div class="page-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 style="color:var(--green)">تقرير سجل حركة المخزون</h1>
+            <p>آخر 100 حركة مسجلة بالنظام</p>
+          </div>
+          <div class="no-print" style="display:flex;gap:10px;">
+            <button class="btn btn-ghost go-back">رجوع</button>
+            <button class="btn btn-green" onclick="window.print()">${ic('print')} طباعة / حفظ PDF</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead>
+                <tr>
+                  <th>التاريخ</th>
+                  <th>نوع الحركة</th>
+                  <th>الصنف</th>
+                  <th>الكمية</th>
+                  <th>ملاحظة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data||[]).map(m => {
+                  const [lbl,cls] = TYPE[m.type]||[m.type,'ok'];
+                  const item = m.agro_materials?.name || m.agro_products?.name || '—';
+                  const unit = m.material_id ? 'كجم' : 'عبوة';
+                  return `<tr>
+                    <td class="num muted">${fdate(m.created_at)}</td>
+                    <td><span class="pill ${cls}">${lbl}</span></td>
+                    <td><strong>${esc(item)}</strong></td>
+                    <td class="num">${qty(m.quantity)} ${unit}</td>
+                    <td class="muted">${esc(m.note||'')}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    view.querySelector('.go-back').addEventListener('click', renderGrid);
+  };
+
+  renderGrid();
+}
 
 /* ===== إقلاع ===== */
 go(NAV.find(n=>n.k).k);

@@ -1061,7 +1061,7 @@ tbody tr:hover {
   .topbar, .nav, .no-print, button, .panel-head button, .btn, .btn-sm {
     display: none !important;
   }
-  .shell {
+  .shell, .body {
     display: block !important;
   }
   .main {
